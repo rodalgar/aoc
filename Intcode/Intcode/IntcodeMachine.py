@@ -1,4 +1,4 @@
-from IntcodeInstruction import AdditionInst, MultiplyInst, LessThanInst, EqualsInst, InputInst, OutputInst, \
+from .IntcodeInstruction import AdditionInst, MultiplyInst, LessThanInst, EqualsInst, InputInst, OutputInst, \
     JumpIfTrueInst, JumpIfFalseInst, AdjustRelativeBaseInst, QuitInst
 
 

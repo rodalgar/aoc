@@ -1,5 +1,5 @@
-from IntcodeDevice import ConsoleDevice
-from IntcodeParameter import IntcodeParameter
+from .IntcodeDevice import ConsoleDevice
+from .IntcodeParameter import IntcodeParameter
 
 
 class IntcodeInstruction():

@@ -1,8 +1,7 @@
 import time
 from collections import Counter
-
-from IntcodeDevice import IntcodeDevice
-from IntcodeMachine import IntcodeInterpreterV5
+from Intcode.IntcodeDevice import IntcodeDevice
+from Intcode.IntcodeMachine import IntcodeInterpreterV5
 
 
 class ArcadeCabinet():
