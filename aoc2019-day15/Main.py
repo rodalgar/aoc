@@ -33,9 +33,7 @@ class JoystickDevice(IntcodeDevice):
     def read(self):
         assert self.attached_to is not None, f'[{self.label}] Device is not attached to anything!!'
 
-        self.attached_to.print_screen()
-        #DEBUGGG
-        print(self.attached_to.unexplored_tiles)
+        self.attached_to.level_map.print_screen()
 
         direction = self.getNewDirection()
 
@@ -53,35 +51,18 @@ class AutomaticJoystickDevice(JoystickDevice):
         super().__init__(label)
         self.are_we_backtracking = False
 
-    def get_coords_at_direction(self, direction):
-        new_direction = self.attached_to.actual_position + direction
-        return (new_direction[0], new_direction[1])
-
-    def get_tile_at_direction(self, the_map, direction):
-        # new_pos = self.attached_to.actual_position + direction
-        new_pos = self.get_coords_at_direction(direction)
-        return the_map[new_pos[0], new_pos[1]]
-
-    def check_if_direction_is_valid(self, the_map, direction, tile_type):
-        return self.get_tile_at_direction(the_map, direction).tile_type == tile_type
-
     def get_valid_direction(self):
-        print('get_valid_direction', 'INVOCADA')
-        #TODO: First version: try first unknown tile.
-        # self.attached_to.actual_map
-        # self.attached_to.actual_position
-        # y, x = self.attached_to.actual_position[0], self.attached_to.actual_position[1]
-        the_map = self.attached_to.actual_map
+        the_map = self.attached_to.level_map
 
         # we try clock-wise
         self.are_we_backtracking = False
-        if self.check_if_direction_is_valid(the_map, self.attached_to.DIRECTION_NORTH, Tile.TYPE_UNK):
+        if the_map.get_tile_at_direction(the_map.DIRECTION_NORTH).tile_type == Tile.TYPE_UNK:
             return 1
-        elif self.check_if_direction_is_valid(the_map, self.attached_to.DIRECTION_EAST, Tile.TYPE_UNK):
+        elif the_map.get_tile_at_direction(the_map.DIRECTION_EAST).tile_type == Tile.TYPE_UNK:
             return 4
-        elif self.check_if_direction_is_valid(the_map, self.attached_to.DIRECTION_SOUTH, Tile.TYPE_UNK):
+        elif the_map.get_tile_at_direction(the_map.DIRECTION_SOUTH).tile_type == Tile.TYPE_UNK:
             return 2
-        elif self.check_if_direction_is_valid(the_map, self.attached_to.DIRECTION_WEST, Tile.TYPE_UNK):
+        elif the_map.get_tile_at_direction(the_map.DIRECTION_WEST).tile_type == Tile.TYPE_UNK:
             return 3
 
         # If we reach this point, there is no unknown tile to scout from the actual one.
@@ -91,46 +72,27 @@ class AutomaticJoystickDevice(JoystickDevice):
 
         minimun_cost = np.inf
         best_direction = None
-        for direction in [self.attached_to.DIRECTION_NORTH, self.attached_to.DIRECTION_EAST, self.attached_to.DIRECTION_SOUTH, self.attached_to.DIRECTION_WEST]:
-            tile = self.get_tile_at_direction(the_map, direction)
+        for direction in [the_map.DIRECTION_NORTH, the_map.DIRECTION_EAST, the_map.DIRECTION_SOUTH, the_map.DIRECTION_WEST]:
+            tile = the_map.get_tile_at_direction(direction)
             if tile.tile_type == Tile.TYPE_FLOOR:
                 if tile.minimum_cost < minimun_cost:
                     minimun_cost = tile.minimum_cost
-                    best_direction = self.attached_to.get_direction_from_vector(direction)
+                    best_direction = the_map.get_direction_from_vector(direction)
 
-        print('BACKTRACK!!!', best_direction)
+        # print('BACKTRACK!!!', best_direction)
 
         return best_direction
-
-    def get_unexplored_adjacent_tiles(self, the_map):
-        for direction in [self.attached_to.DIRECTION_NORTH, self.attached_to.DIRECTION_EAST, self.attached_to.DIRECTION_SOUTH, self.attached_to.DIRECTION_WEST]:
-            if self.get_tile_at_direction(the_map, direction).tile_type == Tile.TYPE_UNK:
-                self.attached_to.unexplored_tiles.add(self.get_coords_at_direction(direction))
 
     def getNewDirection(self):
         last_navigation_result = self.attached_to.get_last_navigation_result()
 
-        # Managing unexplored tiles. Adding new unexplored adjacent tiles and removing explored ones.
-        t_position = (self.attached_to.actual_position[0], self.attached_to.actual_position[1])
-        self.get_unexplored_adjacent_tiles(self.attached_to.actual_map)
-
         if last_navigation_result == SensorDevice.SENSOR_RESULT_BLOCK:
-            self.attached_to.unexplored_tiles.remove(self.get_coords_at_direction(self.last_direction))
-
             self.last_direction = self.get_valid_direction()
             new_direction = self.last_direction
-        # elif last_navigation_result == SensorDevice.SENSOR_RESULT_FLOOR:
         else:
-            if t_position in self.attached_to.unexplored_tiles:
-                self.attached_to.unexplored_tiles.remove(t_position)
-
             if self.last_direction is None or self.are_we_backtracking:
                 self.last_direction = self.get_valid_direction()
             new_direction = self.last_direction
-        # else:
-        #     print('Hemos llegado al destino!!!! bwahahahaha')
-        #     self.attached_to.print_screen()
-        #     # exit(0)
         return new_direction
 
 
@@ -153,90 +115,69 @@ class SensorDevice(IntcodeDevice):
 
 class Tile():
     tile_type = None
-    minimum_cost = np.inf
+    minimum_cost = None
+    with_oxygen = False
 
     TYPE_UNK    = 0
     TYPE_BLOCK  = 1
     TYPE_FLOOR  = 2
 
-    def __init__(self, type):
-        assert type in [Tile.TYPE_UNK, Tile.TYPE_BLOCK, Tile.TYPE_FLOOR], f'Unknown tile type {type}!'
-        self.tile_type = type
+    def __init__(self, tile_type, min_cost=np.inf):
+        assert tile_type in [Tile.TYPE_UNK, Tile.TYPE_BLOCK, Tile.TYPE_FLOOR], f'Unknown tile type {tile_type}!'
+        self.tile_type = tile_type
+        self.minimum_cost = min_cost
 
     def get_tile_symbol(self):
         if self.tile_type == Tile.TYPE_BLOCK:
             return '#'
-        elif self.tile_type == Tile.TYPE_FLOOR:
+        elif self.tile_type == Tile.TYPE_FLOOR and not self.with_oxygen:
             return '.'
+        elif self.tile_type == Tile.TYPE_FLOOR and self.with_oxygen:
+            return 'O'
         else:
-            return '?' #TODO: Change this for ' '
+            return ' '
 
     def __repr__(self):
         return f'{self.get_tile_symbol()} {self.minimum_cost}'
 
 
-class RepairDroid():
-
-    machine = None
-    program = None
-    joystick = None
-    sensor = None
-
+class LevelMap():
     actual_map = None
     actual_direction = None
     actual_position = None
+    goal_position = None
 
-    last_navigation_result = None
     unexplored_tiles = None
 
-    # MAP_MAX_X = 80
-    # MAP_MAX_Y = 40
-    MAP_MAX_X = 100
-    MAP_MAX_Y = 50
+    MAP_MAX_X = None
+    MAP_MAX_Y = None
 
     DIRECTION_NORTH = np.array((-1, 0), dtype=int)
     DIRECTION_SOUTH = np.array((1, 0), dtype=int)
     DIRECTION_WEST = np.array((0, -1), dtype=int)
     DIRECTION_EAST = np.array((0, 1), dtype=int)
 
-    def __init__(self, machine, program, joystick, sensor):
-        self.machine = machine
-        self.program = program
-        self.joystick = joystick
-        self.sensor = sensor
+    def __init__(self, max_x, max_y):
+        self.MAP_MAX_X = max_x
+        self.MAP_MAX_Y = max_y
 
-        self.joystick.attach_to(self)
-        self.sensor.attach_to(self)
-
-        self.machine.instructions[3].setDevice(self.joystick)
-        self.machine.instructions[4].setDevice(self.sensor)
-
-    def print_screen(self):
-        print('print_screen')
-        # return
-        for y in range(0, RepairDroid.MAP_MAX_Y):
-            row = ''
-            for x in range(0, RepairDroid.MAP_MAX_X):
-                if self.actual_position[0] == y and self.actual_position[1] == x:
-                    row += '@'
-                else:
-                    row += self.actual_map[y, x].get_tile_symbol()
-            print(row)
-        print('Actual position:', self.actual_position)
-
-    def get_last_navigation_result(self):
-        return self.last_navigation_result
+    def initialize_map(self):
+        self.unexplored_tiles = set()
+        self.actual_map = np.full([self.MAP_MAX_Y, self.MAP_MAX_X], Tile(Tile.TYPE_UNK))
+        self.actual_position = np.array((self.MAP_MAX_Y // 2, self.MAP_MAX_X // 2), dtype=int)
+        self.actual_map[self.actual_position[0], self.actual_position[1]] = Tile(Tile.TYPE_FLOOR, 0)
+        self.update_unexplored_tiles()
 
     def get_direction_from_index(self, direction):
         assert 0 < direction < 5, f"Can't convert direction {direction}!!"
         if direction == 1:
-            return RepairDroid.DIRECTION_NORTH
+            return self.DIRECTION_NORTH
         elif direction == 2:
-            return RepairDroid.DIRECTION_SOUTH
+            return self.DIRECTION_SOUTH
         elif direction == 3:
-            return RepairDroid.DIRECTION_WEST
+            return self.DIRECTION_WEST
         else:
-            return RepairDroid.DIRECTION_EAST
+            return self.DIRECTION_EAST
 
     def get_direction_from_vector(self, direction):
         if np.array_equal(direction, self.DIRECTION_NORTH):
@@ -248,71 +189,175 @@ class RepairDroid():
         else:
             return 4
 
-    def move_to(self, new_position, new_cost):
+    def get_coords_at_direction(self, direction):
+        new_direction = self.actual_position + direction
+        return (new_direction[0], new_direction[1])
+
+    def get_tile_at_direction(self, direction):
+        new_pos = self.get_coords_at_direction(direction)
+        return self.get_tile_at_position(new_pos[0], new_pos[1])
+
+    def get_tile_at_position(self, y, x):
+        return self.actual_map[y, x]
+
+    def get_actual_tile(self):
+        return self.actual_map[self.actual_position[0], self.actual_position[1]]
+
+    def print_screen(self):
+        for y in range(0, self.MAP_MAX_Y):
+            row = ''
+            for x in range(0, self.MAP_MAX_X):
+                if self.actual_position[0] == y and self.actual_position[1] == x:
+                    row += '@'
+                elif self.goal_position is not None and self.goal_position[0] == y and self.goal_position[1] == x:
+                    row += '*'
+                else:
+                    row += self.actual_map[y, x].get_tile_symbol()
+            print(row)
+        print('Actual position:', self.actual_position)
+        print('Goal position:', self.goal_position)
+
+    def begin_movement(self, direction):
+        self.actual_direction = self.get_direction_from_index(direction)
+
+    def update_unexplored_tiles(self):
+        t_position = (self.actual_position[0], self.actual_position[1])
+        if t_position in self.unexplored_tiles:
+            self.unexplored_tiles.remove(t_position)
+
+        for direction in [self.DIRECTION_NORTH, self.DIRECTION_EAST, self.DIRECTION_SOUTH, self.DIRECTION_WEST]:
+            if self.get_tile_at_direction(direction).tile_type == Tile.TYPE_UNK:
+                self.unexplored_tiles.add(self.get_coords_at_direction(direction))
+
+    def movement_success(self, goal_found=False):
+        new_position = self.actual_position + self.actual_direction
+        new_cost = self.actual_map[self.actual_position[0], self.actual_position[1]].minimum_cost + 1
+
         assert 0 <= new_position[0] < self.MAP_MAX_Y, f'Y Axis is out of bounds! {new_position}'
         assert 0 <= new_position[1] < self.MAP_MAX_X, f'X Axis is out of bounds! {new_position}'
 
         self.actual_position = new_position
-        if self.last_navigation_result is None:
-            self.last_navigation_result = SensorDevice.SENSOR_RESULT_FLOOR
-        # print('move_to', f'moviendo a {new_position}')
+        if goal_found:
+            self.goal_position = new_position
+
+        # Manage unexplored tiles. Remove new position. Add adjacent from new_position
+        self.update_unexplored_tiles()
         if self.actual_map[new_position[0], new_position[1]].tile_type == Tile.TYPE_UNK:
-            self.actual_map[new_position[0], new_position[1]] = Tile(Tile.TYPE_FLOOR)
-            self.actual_map[new_position[0], new_position[1]].minimum_cost = new_cost
+            self.actual_map[new_position[0], new_position[1]] = Tile(Tile.TYPE_FLOOR, new_cost)
         elif self.actual_map[new_position[0], new_position[1]].tile_type == Tile.TYPE_FLOOR:
-            # actualizamos el coste
             if self.actual_map[new_position[0], new_position[1]].minimum_cost > new_cost:
-                print(f'Llegar a {new_position[0]},{new_position[1]} costaba {self.actual_map[new_position[0], new_position[1]].minimum_cost} pero ahora cuesta {new_cost}!')
+                print(f'Getting to {new_position[0]},{new_position[1]} had a cost of {self.actual_map[new_position[0], new_position[1]].minimum_cost}. Now costs {new_cost}!')
                 self.actual_map[new_position[0], new_position[1]].minimum_cost = new_cost
 
-    def resolve_movement(self, navigation_result):
-        # print('resolve_movement', navigation_result)
-        self.last_navigation_result = navigation_result
-        new_cost = self.actual_map[self.actual_position[0], self.actual_position[1]].minimum_cost + 1
+    def movement_blocked(self):
         new_position = self.actual_position + self.actual_direction
+        self.actual_map[new_position[0], new_position[1]] = Tile(Tile.TYPE_BLOCK)
+        t_position = (new_position[0], new_position[1])
+        if t_position in self.unexplored_tiles:
+            self.unexplored_tiles.remove(t_position)
+
+    def get_adjacent_coords_at_position(self, y, x):
+        param_pos = np.array((y, x), dtype=int)
+
+        return [tuple(param_pos + direction) for direction in [self.DIRECTION_NORTH, self.DIRECTION_EAST, self.DIRECTION_SOUTH, self.DIRECTION_WEST]]
+
+
+class RepairDroid():
+
+    machine = None
+    program = None
+    joystick = None
+    sensor = None
+
+    level_map = None
+    last_navigation_result = None
+
+    def __init__(self, machine, program, joystick, sensor):
+        self.machine = machine
+        self.program = program
+        self.joystick = joystick
+        self.sensor = sensor
+        self.level_map = LevelMap(100, 50)
+
+        self.joystick.attach_to(self)
+        self.sensor.attach_to(self)
+
+        self.machine.instructions[3].setDevice(self.joystick)
+        self.machine.instructions[4].setDevice(self.sensor)
+
+    def get_last_navigation_result(self):
+        return self.last_navigation_result
+
+    def move_to(self, new_position, new_cost):
+        if self.last_navigation_result is None:
+            self.last_navigation_result = SensorDevice.SENSOR_RESULT_FLOOR
+        self.level_map.movement_success(new_position, new_cost)
+
+    def resolve_movement(self, navigation_result):
+        self.last_navigation_result = navigation_result
 
         if navigation_result == SensorDevice.SENSOR_RESULT_BLOCK:
-            #block found at new position
-            self.actual_map[new_position[0], new_position[1]] = Tile(Tile.TYPE_BLOCK)
+            self.level_map.movement_blocked()
         elif navigation_result == SensorDevice.SENSOR_RESULT_FLOOR:
             #floor
-            self.move_to(new_position, new_cost)
+            self.level_map.movement_success()
         else:
             #goal
-            self.move_to(new_position, new_cost)
+            self.level_map.movement_success(goal_found=True)
 
     def begin_movement(self, direction):
-        # print('begin_movement', direction)
-        # TODO: Hacer aquí el chequeo del tamaño para ver si hay que ampliar el mapa
-        self.actual_direction = self.get_direction_from_index(direction)
+        self.level_map.begin_movement(direction)
 
-    def searchOxygenSystem(self):
-        self.unexplored_tiles = set()
-        self.actual_map = np.full([RepairDroid.MAP_MAX_Y, RepairDroid.MAP_MAX_X], Tile(Tile.TYPE_UNK))
-        self.move_to(np.array([RepairDroid.MAP_MAX_Y // 2, RepairDroid.MAP_MAX_X // 2], dtype=int), 0)
+    def search_oxygen_system(self):
+        self.level_map.initialize_map()
 
-        print('AA')
-        self.print_screen()
-        print('BB')
-        # zaska = self.machine.compute(self.program)
+        self.level_map.print_screen()
         if self.machine.program is None:
             self.machine.beginStep(self.program)
         while self.last_navigation_result != SensorDevice.SENSOR_RESULT_GOAL:
             self.machine.nextStep()
-        print('CC')
-        final_tile = self.actual_map[self.actual_position[0], self.actual_position[1]]
-        print(f'Coste de llegar al fin es {final_tile.minimum_cost}')
-        return final_tile.minimum_cost
 
-    def traverse_all_map(self):
-        while len(self.unexplored_tiles) > 0:
-            self.machine.nextStep()
+        return self.level_map.get_actual_tile().minimum_cost
 
     def get_time_for_full_oxygen(self):
-        self.traverse_all_map()
-        self.print_screen()
+        # Traverse all map
+        while len(self.level_map.unexplored_tiles) > 0:
+            self.machine.nextStep()
 
-        return -1
+        # Print initial state
+        self.level_map.print_screen()
+
+        minutes = -1
+
+        processed_tiles = set()
+        processing_queue = [tuple(self.level_map.goal_position)]
+
+        while True:
+            tmp_processing_queue = []
+            while len(processing_queue) > 0:
+                tile_coords = processing_queue[0]
+                processing_queue = processing_queue[1:]
+                if tile_coords in processed_tiles:
+                    continue
+                the_tile = self.level_map.get_tile_at_position(tile_coords[0], tile_coords[1])
+                the_tile.with_oxygen = True
+                processed_tiles.add(tile_coords)
+
+                for adjacent in self.level_map.get_adjacent_coords_at_position(tile_coords[0], tile_coords[1]):
+                    if adjacent in processed_tiles:
+                        continue
+                    adjacent_tile = self.level_map.get_tile_at_position(adjacent[0], adjacent[1])
+                    if adjacent_tile.tile_type == Tile.TYPE_BLOCK:
+                        continue
+                    tmp_processing_queue.append(adjacent)
+
+            minutes += 1
+            self.level_map.print_screen()
+            processing_queue = tmp_processing_queue
+            if len(tmp_processing_queue) == 0:
+                break
+
+        return minutes
 
 
 input_15 = r'data\aoc2019-input-day15.txt'
@@ -324,14 +369,17 @@ with open(input_15, 'r') as f:
 # PART 1 #########
 ##################
 repairDroid = RepairDroid(IntcodeInterpreterV5(), data15, AutomaticJoystickDevice('joystick'), SensorDevice('sensor'))
-cost = repairDroid.searchOxygenSystem()
+cost = repairDroid.search_oxygen_system()
 print('Minimum cost is', cost)
 
 #>>>SOLUTION: 214
 
-print('THE END')
 
 ##################
 # PART 2 #########
 ##################
 minutes = repairDroid.get_time_for_full_oxygen()
+
+print('minutes:', minutes)
+
+#>>>SOLUTION: 344
