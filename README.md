@@ -1,2 +1,4 @@
-# aoc-2019
-Code for solving Advent of Code 2019 puzzles
+# Advent of Code
+Code for solving Advent of Code puzzles
+
+Currently 2019 & 2020
