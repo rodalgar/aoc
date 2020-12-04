@@ -1,4 +1,4 @@
-# DAY 3
+# DAY 3: Toboggan Trajectory
 import numpy as np
 import re
 

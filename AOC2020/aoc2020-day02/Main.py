@@ -1,4 +1,4 @@
-# DAY 2
+# DAY 2: Password Philosophy
 
 
 # Utility functions. Parsing, testing, solving.

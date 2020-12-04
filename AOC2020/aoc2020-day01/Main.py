@@ -1,4 +1,4 @@
-# DAY 1: Day 1: Report Repair
+# DAY 1: Report Repair
 # PART 1
 
 
