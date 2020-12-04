@@ -1,4 +1,4 @@
-# DAY 4
+# DAY 4: Passport Processing
 import re
 
 
@@ -22,7 +22,6 @@ def parse_batch(lines):
                 chunk = word.split(':')
                 # TODO: Should we check for malformed strings?
                 # TODO: Should we check if verb already exists?
-                # TODO: Should we check for invalid verbs?
                 password[chunk[0]] = chunk[1]
 
     # last line
