@@ -48,10 +48,7 @@ def count_answers_in_all_groups(count_fun, groups):
     :param groups: List of groups.
     :return: Sum of all results.
     """
-    total = 0
-    for group in groups:
-        total += count_fun(group)
-    return total
+    return sum(map(count_fun, parse_groups(sol_groups)))
 
 
 # PART 2
