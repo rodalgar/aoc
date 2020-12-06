@@ -7,7 +7,7 @@ def parse_batch(lines):
     """
     Transform a list of strings (raw input) into a list of dictionaries, one for each parsed password.
 
-    :param lines: List of strings from thw raw input.
+    :param lines: List of strings from the raw input.
     :return: List of dictionaries, one for each password.
     """
 
