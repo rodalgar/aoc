@@ -1,5 +1,4 @@
 # DAY 8: Handheld Halting
-import re
 
 # PART 1
 # COMMANDS, nop, jmp and acc
@@ -45,7 +44,7 @@ def get_number(raw_number):
     try:
         return int(raw_number)
     except TypeError as e:
-        print(f"Raw number was {raw_number}. Can't be converted to int!!")
+        print(f"Raw number was {raw_number}. Can't be converted to int!! {e}")
 
 
 def parse_program(raw_program):
@@ -125,6 +124,7 @@ def check_proposed_change(number, command, new_instruction, visited_position, ma
     Checks if changing from nop to jmp, or jmp to nop seems a good change. This is used to avoid wasting time doing
     changes that are not going to end well in cases when it is very clear.
 
+    :param command: original command.
     :param number: value given with command.
     :param new_instruction: new intruction poiner when change is accepted.
     :param visited_position: set of already visited instructions to check for infinite loops.
