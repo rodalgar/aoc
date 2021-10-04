@@ -9,18 +9,27 @@ class Moon:
     label = None
     gravity_force = None
 
-    @staticmethod
-    def __sign(x):
-        return 0 if x == 0 else 1 if x > 0 else -1
+    # @staticmethod
+    # def __sign(x):
+    #     np.sign()
+    #     # return 0 if x == 0 else 1 if x > 0 else -1
+    #     return 1 if x > 0 else -1 if x < 0 else 0
 
-    def __init__(self, label, starting_position=(0, 0, 0)):
+    # def __init__(self, label, starting_position=(0, 0, 0)):
+    def __init__(self, label, starting_position=[0, 0, 0]):
         self.label = label
         self.position = starting_position
-        self.velocity = (0, 0, 0)
-        self.gravity_force = (0, 0, 0)
+        # self.velocity = (0, 0, 0)
+        self.velocity = [0, 0, 0]
+        # self.gravity_force = (0, 0, 0)
 
     def get_gravity_pull(self, another_moon):
-        return tuple(Moon.__sign(q - p) for p, q in zip(self.position, another_moon.position))
+        # return tuple(Moon.__sign(q - p) for p, q in zip(self.position, another_moon.position))
+        # return np.sign(another_moon.position - self.position)
+        for i in range(3):
+            pull = (1 if self.position[i] < another_moon.position[i] else -1 if self.position[i] > another_moon.position[i] else 0)
+            self.velocity[i] += pull
+            another_moon.velocity[i] -= pull
 
     def get_potential_energy(self):
         return np.sum(np.abs(self.position))
@@ -49,4 +58,5 @@ class Moon:
         z = re.search('z=(-*[0-9]+)', raw_data).groups(1)[0]
         # print('z vale', z)
 
-        return Moon(label, (int(x), int(y), int(z)))
+        # return Moon(label, (int(x), int(y), int(z)))
+        return Moon(label, [int(x), int(y), int(z)])
